@@ -51,11 +51,9 @@ def _saveProject(path):
         with lfOpen(filepath) as f:
             projects = f.read().splitlines()
 
-    if path not in projects:
-        projects.append(path)
-
+    projects.append(path)
     with lfOpen(filepath, "w") as f:
-        f.write("\n".join(projects))
+        f.write("\n".join(sorted(set(projects))))
 
 
 def _removeProject(path):
@@ -122,16 +120,29 @@ class ProjectManager(Manager):
     def addProject(self):
         instance = self._getInstance()
         root_markers = lfEval("g:Lf_RootMarkers")
-        path = _nearestAncestor(root_markers, os.getcwd())
+        cwd = os.getcwd()
+        path = _nearestAncestor(root_markers, cwd)
+        if len(path) < 1:
+            path = cwd
+        path = lfEval('input("add to projects: ", "'+path+'")')
         _saveProject(path)
-        lfCmd("echo 'added "+path+"'")
+        if not path:
+            lfCmd("redraw | echo 'cancelled'")
+            return
+        lfCmd("redraw | echo 'added "+path+"'")
         self._getInstance().exitBuffer()
 
     def deleteProject(self):
         instance = self._getInstance()
         line = instance.currentLine
-        _removeProject(line)
-        self._getInstance().exitBuffer()
+        confirm = lfEval(
+            'confirm("remove \\"'+line+'?\\"", "&Yes\n&No\n&Cancel")')
+        if confirm == "1":
+            _removeProject(line)
+            lfCmd("redraw | echo 'removed.'")
+            self._getInstance().exitBuffer()
+        else:
+            lfCmd("redraw | echo 'cancelled'")
 
     def _acceptSelection(self, *args, **kwargs):
         if len(args) == 0:
