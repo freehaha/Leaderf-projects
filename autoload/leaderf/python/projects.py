@@ -4,7 +4,6 @@
 import vim
 import os
 import os.path
-import json
 from leaderf.utils import *
 from leaderf.explorer import *
 from leaderf.manager import *
@@ -21,9 +20,6 @@ class ProjectsExplorer(Explorer):
     def getContent(self, *args, **kwargs):
         return self.getFreshContent()
 
-    def supportsNameOnly(self):
-        return True
-
     def getFreshContent(self, *args, **kwargs):
         filepath = lfEval(
             "expand(get(g:, 'Lf_ProjectFilePath', '~/.LfProjects'))")
@@ -31,66 +27,52 @@ class ProjectsExplorer(Explorer):
             return []
 
         with lfOpen(filepath) as f:
-            projects = json.load(f)
+            projects = f.read().splitlines()
 
         if len(projects) == 0:
             return []
 
-        # from mruExpl.py
-        _max_name_len = max(
-            int(lfEval("strdisplaywidth('{}')".format(name)))
-            for name in projects.keys()
-        )
-
-        lines = []
-        for name, path in projects.items():
-            space_num = _max_name_len - int(
-                lfEval("strdisplaywidth('{}')".format(escQuote(name)))
-            )
-            lines.append(
-                "{}{} | {}".format(
-                    name,
-                    " " * space_num,
-                    path,
-                )
-            )
-
-        self._content = lines
-        return lines
+        self._content = projects
+        return projects
 
     def getStlCategory(self):
         return "Projects"
 
 
-def _saveProject(name, path):
+def _saveProject(path):
     filepath = lfEval(
         "expand(get(g:, 'Lf_ProjectFilePath', '~/.LfProjects'))")
 
-    projects = dict()
     if os.path.exists(filepath):
         with lfOpen(filepath) as f:
-            projects = json.load(f)
+            projects = f.read().splitlines()
 
-    projects[name] = path
+    if path not in projects:
+        projects.append(path)
+
     with lfOpen(filepath, "w") as f:
-        json.dump(projects, f)
+        f.write("\n".join(projects))
 
 
-def _removeProject(name):
+def _removeProject(path):
     filepath = lfEval(
         "expand(get(g:, 'Lf_ProjectFilePath', '~/.LfProjects'))")
     if not os.path.exists(filepath):
         return
 
+    projects = []
     with lfOpen(filepath) as f:
-        projects = json.load(f)
+        projects = f.read().splitlines()
 
     if len(projects) == 0:
         return
 
-    projects.pop(name, None)
+    if path not in projects:
+        return
+
+    projects.remove(path)
     with lfOpen(filepath, "w") as f:
-        json.dump(projects, f)
+        f.write("\n".join(projects))
 
 
 def _nearestAncestor(markers, path):
@@ -137,31 +119,24 @@ class ProjectManager(Manager):
         instance = self._getInstance()
         root_markers = lfEval("g:Lf_RootMarkers")
         path = _nearestAncestor(root_markers, os.getcwd())
-        dirname = getBasename(path)
-        projectName = lfEval(
-            "input('name for project at " + path + ": ', '" + dirname + "')")
-        if len(projectName) < 1:
-            lfCmd("echo 'project name cannot be empty'")
-            return
-        _saveProject(projectName, path)
+        _saveProject(path)
+        lfCmd("echo 'added "+path+"'")
         self._getInstance().exitBuffer()
 
     def deleteProject(self):
         instance = self._getInstance()
         line = instance.currentLine
-        projectName = line.split(None, 2)[0]
-        _removeProject(projectName)
+        _removeProject(line)
         self._getInstance().exitBuffer()
 
     def _acceptSelection(self, *args, **kwargs):
         if len(args) == 0:
             return
         line = args[0]
-        cmd = line.split(None, 2)[2]
         # vim.chdir(cmd)
         # os.chdir(cmd)
         # lfCmd("let g:Lf_WorkingDirectory='"+cmd+"'")
-        lfCmd("Leaderf file " + cmd)
+        lfCmd("Leaderf file " + line)
 
     def _getDigest(self, line, mode):
         """
@@ -169,12 +144,6 @@ class ProjectManager(Manager):
         Args:
             mode: 0, 1, 2, return the whole line
         """
-        if not line:
-            return ''
-        if mode == 0:
-            return line
-        elif mode == 1:
-            return line.split(None, 2)[0]
         return line
 
     def _getDigestStartPos(self, line, mode):
