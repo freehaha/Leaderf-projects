@@ -9,10 +9,13 @@ from leaderf.explorer import *
 from leaderf.manager import *
 from leaderf.devicons import *
 
+NO_CONTENT = "NO CONTENT"
 
 # *****************************************************
 # MarksExplorer
 # *****************************************************
+
+
 class ProjectsExplorer(Explorer):
     def __init__(self):
         pass
@@ -24,13 +27,13 @@ class ProjectsExplorer(Explorer):
         filepath = lfEval(
             "expand(get(g:, 'Lf_ProjectFilePath', '~/.LfProjects'))")
         if not os.path.exists(filepath):
-            return []
+            return [NO_CONTENT]
 
         with lfOpen(filepath) as f:
             projects = f.read().splitlines()
 
         if len(projects) == 0:
-            return []
+            return [NO_CONTENT]
 
         self._content = projects
         return projects
@@ -43,6 +46,7 @@ def _saveProject(path):
     filepath = lfEval(
         "expand(get(g:, 'Lf_ProjectFilePath', '~/.LfProjects'))")
 
+    projects = []
     if os.path.exists(filepath):
         with lfOpen(filepath) as f:
             projects = f.read().splitlines()
