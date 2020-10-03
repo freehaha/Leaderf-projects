@@ -30,7 +30,7 @@ class ProjectsExplorer(Explorer):
         if not os.path.exists(filepath):
             return []
 
-        with open(filepath) as f:
+        with lfOpen(filepath) as f:
             projects = json.load(f)
 
         if len(projects) == 0:
@@ -68,11 +68,11 @@ def _saveProject(name, path):
 
     projects = dict()
     if os.path.exists(filepath):
-        with open(filepath) as f:
+        with lfOpen(filepath) as f:
             projects = json.load(f)
 
     projects[name] = path
-    with open(filepath, "w") as f:
+    with lfOpen(filepath, "w") as f:
         json.dump(projects, f)
 
 
@@ -82,14 +82,14 @@ def _removeProject(name):
     if not os.path.exists(filepath):
         return
 
-    with open(filepath) as f:
+    with lfOpen(filepath) as f:
         projects = json.load(f)
 
     if len(projects) == 0:
         return
 
     projects.pop(name, None)
-    with open(filepath, "w") as f:
+    with lfOpen(filepath, "w") as f:
         json.dump(projects, f)
 
 
