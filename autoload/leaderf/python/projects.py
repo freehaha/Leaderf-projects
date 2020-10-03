@@ -137,7 +137,9 @@ class ProjectManager(Manager):
         instance = self._getInstance()
         root_markers = lfEval("g:Lf_RootMarkers")
         path = _nearestAncestor(root_markers, os.getcwd())
-        projectName = lfEval("input('name for project at " + path + ": ')")
+        dirname = getBasename(path)
+        projectName = lfEval(
+            "input('name for project at " + path + ": ', '" + dirname + "')")
         if len(projectName) < 1:
             lfCmd("echo 'project name cannot be empty'")
             return
